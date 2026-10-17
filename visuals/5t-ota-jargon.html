@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The 5T OTA — jargon decoder</title>
+<style>
+  :root{
+    --gold: var(--accent, #D4AF37);
+    --ink: var(--foreground, #d8d8dc);
+    --dim: var(--muted-foreground, #8a8a92);
+    --panel: var(--card, #1a1a1e);
+    --line: var(--border, #2e2e34);
+  }
+  html,body{margin:0;padding:0}
+  body{
+    color:var(--ink);
+    font:15px/1.55 var(--app-font, system-ui, sans-serif);
+    max-width:1080px;
+    padding:18px 22px 40px;
+  }
+  h1{font-size:20px;font-weight:600;margin:4px 0 2px}
+  h2{font-size:16px;font-weight:600;margin:26px 0 10px;color:var(--ink)}
+  .sub{color:var(--dim);font-size:13.5px;margin:0 0 18px}
+  p{margin:8px 0}
+  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:13px}
+  .dim{color:var(--dim)}
+
+  /* layout */
+  .workbench{
+    display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);
+    gap:16px;align-items:start;
+  }
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+  @media (max-width:860px){.workbench{grid-template-columns:1fr}}
+
+  /* schematic */
+  svg .wire{stroke:var(--dim);stroke-width:1.6;fill:none}
+  svg .rail{stroke:var(--dim);stroke-width:2;fill:none}
+  svg .chan{stroke:var(--ink);stroke-width:3;fill:none;stroke-linecap:round}
+  svg .gate{stroke:var(--ink);stroke-width:2;fill:none}
+  svg .bub{stroke:var(--ink);stroke-width:1.5;fill:none}
+  svg .cur{stroke:var(--gold);fill:none;stroke-linecap:round;transition:stroke-width .12s}
+  svg .curlabel{fill:var(--gold);font-family:ui-monospace,monospace;font-size:11px}
+  svg .nlabel{fill:var(--dim);font-size:12px;font-family:ui-monospace,monospace}
+  svg .dev-hit{fill:transparent;cursor:pointer}
+  svg .dev.sel .selring{stroke:var(--gold);stroke-width:1.4;fill:none;stroke-dasharray:4 3}
+  svg .dev.sel .chan, svg .dev.sel .gate{stroke:var(--gold)}
+  svg text{user-select:none}
+
+  /* controls */
+  .slider{width:100%;accent-color:var(--gold)}
+  .readout{width:100%;border-collapse:collapse;font-size:13px}
+  .readout td{padding:4px 0;border-bottom:1px solid var(--line)}
+  .readout td:last-child{text-align:right;font-family:ui-monospace,monospace}
+  .readout tr:last-child td{border-bottom:none}
+  .badge{display:inline-block;padding:2px 9px;border:1px solid var(--line);border-radius:99px;
+         font-size:12px;color:var(--dim)}
+  .badge.hot{border-color:var(--gold);color:var(--gold)}
+
+  /* decoder cards */
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:12px;margin-top:4px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:13px 15px}
+  .card h3{margin:0 0 6px;font-size:14px;font-weight:600}
+  .card p{margin:6px 0;font-size:13.5px;color:var(--ink)}
+  .card .eq{display:block;margin:8px 0;padding:8px 10px;border:1px solid var(--line);
+            border-radius:6px;font-family:ui-monospace,monospace;font-size:13px;overflow-x:auto}
+  .u{color:var(--dim)} .own{color:var(--gold)}
+  .card .note{color:var(--dim);font-size:12.5px}
+  .rolebox{margin-top:14px}
+  .rolebox h3{margin:0 0 6px;font-size:14px;font-weight:600;color:var(--gold)}
+  .rolebox p{margin:6px 0;font-size:13.5px}
+  .hint{font-size:12.5px;color:var(--dim);margin:10px 0 0}
+</style>
+</head>
+<body>
+
+<h1>The 5-transistor OTA, mechanically</h1>
+<p class="sub">Jargon decoder for the stage-3 spec — µC<sub>ox</sub>, g<sub>m</sub>/r<sub>o</sub>, GBW, process corners, phase margin. For the interactive circuit these terms belong to, see <span class="mono">5t-ota-circuit.html</span> in the same folder.</p>
+
+<h2>The jargon you flagged</h2>
+<div class="cards">
+
+  <div class="card">
+    <h3>µC<sub>ox</sub> — the factory constant</h3>
+    <span class="eq">I<sub>D</sub> = ½ · <span class="u">µC<sub>ox</sub></span> · <span class="own">(W/L)</span> · <span class="own">V<sub>ov</sub>²</span></span>
+    <p><b>µ</b> = how fast carriers drift through the channel (silicon property).
+       <b>C<sub>ox</sub></b> = gate-oxide capacitance per area = ε<sub>ox</sub>/t<sub>ox</sub> — how strongly the gate's field couples into the channel.</p>
+    <p>Their product sets how much current you get per unit of (W/L) and V<sub>ov</sub>². You never choose it — it comes from the PDK's model file. It is also exactly what varies between chips, which is where the corners below come from.</p>
+  </div>
+
+  <div class="card">
+    <h3>V<sub>ov</sub>, g<sub>m</sub>, r<sub>o</sub> — the operating point</h3>
+    <span class="eq">V<sub>ov</sub> = V<sub>GS</sub> − V<sub>th</sub>&nbsp;&nbsp;&nbsp;g<sub>m</sub> = 2I<sub>D</sub>/V<sub>ov</sub>&nbsp;&nbsp;&nbsp;r<sub>o</sub> = 1/(λI<sub>D</sub>)</span>
+    <p>V<sub>ov</sub> is how far past turn-on the gate sits. Pick it small → more g<sub>m</sub> per current (good gain, speed) but less headroom; pick it large → the opposite.</p>
+    <p>g<sub>m</sub> = how many amps of steering you get per volt of input. r<sub>o</sub> = how good a current source the transistor is. Gain = g<sub>m</sub>·(r<sub>o</sub>∥r<sub>o4</sub>) — and in this symmetric approximation that works out to <span class="mono">1/(λ·V<sub>ov</sub>)</span>: <b>gain is set by L and V<sub>ov</sub>, not by current</b>. Current is what sets speed:</p>
+  </div>
+
+  <div class="card">
+    <h3>GBW — the speed spec</h3>
+    <svg viewBox="0 0 300 130" width="100%" style="display:block">
+      <line x1="38" y1="105" x2="292" y2="105" class="wire" stroke-width="1"/>
+      <line x1="38" y1="105" x2="38" y2="8" class="wire" stroke-width="1"/>
+      <line x1="38" y1="30" x2="88" y2="30" stroke="var(--gold)" stroke-width="2" fill="none"/>
+      <line x1="88" y1="30" x2="240" y2="105" stroke="var(--gold)" stroke-width="2" fill="none"/>
+      <circle cx="240" cy="105" r="3.5" fill="var(--gold)"/>
+      <text x="246" y="100" fill="var(--gold)" font-size="11" font-family="ui-monospace">GBW 1.03 MHz</text>
+      <text x="10" y="34" fill="var(--muted-foreground,#8a8a92)" font-size="10" font-family="ui-monospace">40 dB</text>
+      <text x="8" y="108" fill="var(--muted-foreground,#8a8a92)" font-size="10" font-family="ui-monospace">0 dB</text>
+      <text x="40" y="120" fill="var(--muted-foreground,#8a8a92)" font-size="10" font-family="ui-monospace">1k</text>
+      <text x="130" y="120" fill="var(--muted-foreground,#8a8a92)" font-size="10" font-family="ui-monospace">100k</text>
+      <text x="225" y="120" fill="var(--muted-foreground,#8a8a92)" font-size="10" font-family="ui-monospace">10M</text>
+    </svg>
+    <p>An op-amp's gain is not one number: it is 40 dB at low frequency, then falls at −20 dB/decade. GBW is the frequency where the gain crosses 0 dB — the single number summarising "how fast".</p>
+    <span class="eq">GBW = g<sub>m</sub> / (2π·C<sub>L</sub>)</span>
+    <p>For the 5T OTA it is set by the input pair's g<sub>m</sub> and the load capacitance. Spec: ≥ 1 MHz into 10 pF → forces g<sub>m</sub> ≥ 63 µS → forces the 13 µA tail current. <span class="note">This chain is the stage-3 hand calculation.</span></p>
+  </div>
+
+  <div class="card">
+    <h3>ss / ff / sf — the process corners</h3>
+    <svg viewBox="0 0 300 190" width="100%" style="display:block">
+      <line x1="55" y1="160" x2="275" y2="160" class="wire" stroke-width="1"/>
+      <line x1="55" y1="160" x2="55" y2="12" class="wire" stroke-width="1"/>
+      <text x="165" y="180" fill="var(--muted-foreground,#8a8a92)" font-size="10">NMOS speed →</text>
+      <text x="18" y="90" fill="var(--muted-foreground,#8a8a92)" font-size="10" transform="rotate(-90 18 90)">PMOS speed →</text>
+      <circle cx="165" cy="86" r="4" fill="var(--gold)"/><text x="173" y="90" fill="var(--gold)" font-size="11" font-family="ui-monospace">tt</text>
+      <circle cx="80" cy="140" r="4" fill="var(--ink)"/><text x="88" y="144" fill="var(--ink)" font-size="11" font-family="ui-monospace">ss</text>
+      <circle cx="250" cy="32" r="4" fill="var(--ink)"/><text x="258" y="36" fill="var(--ink)" font-size="11" font-family="ui-monospace">ff</text>
+      <circle cx="80" cy="32" r="4" fill="var(--ink)"/><text x="88" y="36" fill="var(--ink)" font-size="11" font-family="ui-monospace">sf</text>
+      <circle cx="250" cy="140" r="4" fill="var(--ink)"/><text x="258" y="144" fill="var(--ink)" font-size="11" font-family="ui-monospace">fs</text>
+    </svg>
+    <p>Plot every wafer as a point: NMOS speed on one axis, PMOS on the other. The extremes of the distribution form the <b>corners</b> of the square — that's the name's origin.</p>
+    <p><b>ss</b> = slow-slow: higher V<sub>th</sub>, lower µ → less current for the same W/L → your GBW sags. <b>ff</b> = fast-fast: too much current → phase margin erodes. <b>sf/fs</b>: mismatch between the two device types — worst case for offset.</p>
+    <p>The PDK ships a SPICE model file per corner. You re-run the same testbench five times; the spec must hold in all five. <span class="note">(Corner shifts are typically tens of mV on V<sub>th</sub> and 10–20% on µ — orders, not exact numbers.)</span></p>
+  </div>
+
+  <div class="card">
+    <h3>Phase margin — why 60°</h3>
+    <p>Wire the op-amp's output back toward its input (feedback) and the loop can turn stable negative feedback into oscillation if the signal arrives late enough. Phase margin measures the safety distance from that edge; 60° is the standard target.</p>
+    <p>Capacitance anywhere in the signal path adds delay — which is why load caps, layout parasitics (PEX), and the stage-4 Miller compensation keep re-appearing in this ladder.</p>
+  </div>
+
+</div>
+
+<p class="hint" style="margin-top:18px">Everything here is the square-law idealisation (gain exactly 1/(λ·V<sub>ov</sub>) = 100, GBW = 1.03 MHz — right at spec, no margin: in stage 3 you'd keep headroom). Real sky130 devices deviate, and seeing <em>how</em> they deviate is what stages 1–3 teach.</p>
+

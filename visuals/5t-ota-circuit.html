@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The 5T OTA — interactive circuit</title>
+<style>
+  :root{
+    --gold: var(--accent, #D4AF37);
+    --ink: var(--foreground, #d8d8dc);
+    --dim: var(--muted-foreground, #8a8a92);
+    --panel: var(--card, #1a1a1e);
+    --line: var(--border, #2e2e34);
+  }
+  html,body{margin:0;padding:0}
+  body{
+    color:var(--ink);
+    font:15px/1.55 var(--app-font, system-ui, sans-serif);
+    max-width:1080px;
+    padding:18px 22px 40px;
+  }
+  h1{font-size:20px;font-weight:600;margin:4px 0 2px}
+  h2{font-size:16px;font-weight:600;margin:26px 0 10px;color:var(--ink)}
+  .sub{color:var(--dim);font-size:13.5px;margin:0 0 18px}
+  p{margin:8px 0}
+  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:13px}
+  .dim{color:var(--dim)}
+
+  /* layout */
+  .workbench{
+    display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);
+    gap:16px;align-items:start;
+  }
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+  @media (max-width:860px){.workbench{grid-template-columns:1fr}}
+
+  /* schematic */
+  svg .wire{stroke:var(--dim);stroke-width:1.6;fill:none}
+  svg .rail{stroke:var(--dim);stroke-width:2;fill:none}
+  svg .chan{stroke:var(--ink);stroke-width:3;fill:none;stroke-linecap:round}
+  svg .gate{stroke:var(--ink);stroke-width:2;fill:none}
+  svg .bub{stroke:var(--ink);stroke-width:1.5;fill:none}
+  svg .cur{stroke:var(--gold);fill:none;stroke-linecap:round;transition:stroke-width .12s}
+  svg .curlabel{fill:var(--gold);font-family:ui-monospace,monospace;font-size:11px}
+  svg .nlabel{fill:var(--dim);font-size:12px;font-family:ui-monospace,monospace}
+  svg .dev-hit{fill:transparent;cursor:pointer}
+  svg .dev.sel .selring{stroke:var(--gold);stroke-width:1.4;fill:none;stroke-dasharray:4 3}
+  svg .dev.sel .chan, svg .dev.sel .gate{stroke:var(--gold)}
+  svg text{user-select:none}
+
+  /* controls */
+  .slider{width:100%;accent-color:var(--gold)}
+  .readout{width:100%;border-collapse:collapse;font-size:13px}
+  .readout td{padding:4px 0;border-bottom:1px solid var(--line)}
+  .readout td:last-child{text-align:right;font-family:ui-monospace,monospace}
+  .readout tr:last-child td{border-bottom:none}
+  .badge{display:inline-block;padding:2px 9px;border:1px solid var(--line);border-radius:99px;
+         font-size:12px;color:var(--dim)}
+  .badge.hot{border-color:var(--gold);color:var(--gold)}
+
+  /* decoder cards */
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:12px;margin-top:4px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:13px 15px}
+  .card h3{margin:0 0 6px;font-size:14px;font-weight:600}
+  .card p{margin:6px 0;font-size:13.5px;color:var(--ink)}
+  .card .eq{display:block;margin:8px 0;padding:8px 10px;border:1px solid var(--line);
+            border-radius:6px;font-family:ui-monospace,monospace;font-size:13px;overflow-x:auto}
+  .u{color:var(--dim)} .own{color:var(--gold)}
+  .card .note{color:var(--dim);font-size:12.5px}
+  .rolebox{margin-top:14px}
+  .rolebox h3{margin:0 0 6px;font-size:14px;font-weight:600;color:var(--gold)}
+  .rolebox p{margin:6px 0;font-size:13.5px}
+  .hint{font-size:12.5px;color:var(--dim);margin:10px 0 0}
+</style>
+</head>
+<body>
+
+<h1>The 5-transistor OTA, mechanically</h1>
+<p class="sub">Interactive circuit walkthrough — every number is live-computed from the square-law model, sized for the stage-3 spec: tail current 13 µA, V<sub>ov</sub> = 0.2 V, λ = 0.05, load 10 pF. Click a transistor to see its job; drag the slider to steer the current. Jargon decoder cards: <span class="mono">5t-ota-jargon.html</span> in the same folder.</p>
+
+<div class="workbench">
+
+  <!-- schematic -->
+  <div class="panel">
+    <svg id="sch" viewBox="0 0 700 520" width="100%" style="display:block"></svg>
+  </div>
+
+  <!-- controls -->
+  <div>
+    <div class="panel">
+      <p style="margin:0 0 8px">Input difference &nbsp;<span class="mono" id="dvLabel">ΔV<sub>in</sub> = 0 mV</span></p>
+      <input id="dv" class="slider" type="range" min="-60" max="60" step="0.5" value="0">
+      <p class="hint" style="margin-top:10px">IN+ rises, M1 conducts more; the tail current is fixed, so M2 must conduct less. The mirror copies M1's current to the OUT node, so the <em>difference</em> lands there.</p>
+      <table class="readout" style="margin-top:12px">
+        <tr><td>I₁ <span class="dim">(M3 → M1 branch)</span></td><td id="rI1">6.50 µA</td></tr>
+        <tr><td>I₂ <span class="dim">(M2 branch)</span></td><td id="rI2">6.50 µA</td></tr>
+        <tr><td>M4 pushes in (copy of I₁)</td><td id="rI4">6.50 µA</td></tr>
+        <tr><td>M2 pulls out</td><td id="rI2b">6.50 µA</td></tr>
+        <tr><td>imbalance into OUT node</td><td id="rInet">0.00 µA</td></tr>
+        <tr><td>V<sub>out</sub> <span class="dim">(into R<sub>out</sub> = 1.54 MΩ)</span></td><td id="rVout">0.950 V</td></tr>
+        <tr><td>status</td><td id="rStat">linear</td></tr>
+      </table>
+    </div>
+
+    <div class="panel" style="margin-top:12px">
+      <p style="margin:0 0 6px">Transfer curve — V<sub>out</sub> vs ΔV<sub>in</sub></p>
+      <canvas id="vtc" width="340" height="205" style="width:100%;display:block"></canvas>
+      <p class="hint">Gain = 100 → the linear region is only about ±6 mV wide. Past that, one transistor takes the whole tail current and the output sits at a rail. This is why op-amps are used inside feedback loops: the loop keeps ΔV<sub>in</sub> near zero.</p>
+    </div>
+
+    <div class="panel rolebox" id="rolebox">
+      <h3 id="roleName">Select a transistor</h3>
+      <p id="roleBody" class="dim">Click any device in the schematic. Its job, its equation, and what its W/L controls.</p>
+    </div>
+  </div>
+</div>
+
+<p class="hint" style="margin-top:18px">Everything here is the square-law idealisation (gain exactly 1/(λ·V<sub>ov</sub>) = 100, GBW = 1.03 MHz — right at spec, no margin: in stage 3 you'd keep headroom). Real sky130 devices deviate, and seeing <em>how</em> they deviate is what stages 1–3 teach.</p>
+
+<script>
+(function(){
+"use strict";
+var SVGNS="http://www.w3.org/2000/svg";
+function el(n,a){var e=document.createElementNS(SVGNS,n);for(var k in a)e.setAttribute(k,a[k]);return e;}
+function line(g,x1,y1,x2,y2,cls){g.appendChild(el("line",{x1:x1,y1:y1,x2:x2,y2:y2,class:cls}));}
+function txt(g,x,y,s,cls,anchor){var t=el("text",{x:x,y:y,class:cls||"nlabel"});if(anchor)t.setAttribute("text-anchor",anchor);t.textContent=s;g.appendChild(t);return t;}
+
+/* ---------- physics ---------- */
+var It=13e-6, Vov=0.2, lam=0.05, CL=10e-12, VQ=0.95, VLO=0.3, VHI=1.6;
+var ID=It/2, gm=2*ID/Vov, ro=1/(lam*ID), Rout=ro/2, GBW=gm/(2*Math.PI*CL);
+function steer(dV){ // differential current I1-I2, exact square-law with ideal tail
+  var s=dV;
+  if(Math.abs(s)>=Math.SQRT2*Vov) return Math.sign(s)*It;
+  var k=It/(Vov*Vov);
+  return 0.5*k*s*Math.sqrt(4*Vov*Vov-s*s);
+}
+
+/* ---------- schematic ---------- */
+var sch=document.getElementById("sch");
+var defs=el("defs",{});
+var mk=el("marker",{id:"ah",viewBox:"0 0 10 10",refX:"8",refY:"5",markerWidth:"6",markerHeight:"6",orient:"auto-start-reverse"});
+mk.appendChild(el("path",{d:"M0,0 L10,5 L0,10 z",fill:"var(--gold)"}));
+defs.appendChild(mk);sch.appendChild(defs);
+
+/* rails */
+line(sch,80,60,640,60,"rail"); txt(sch,80,48,"VDD","nlabel");
+line(sch,80,470,640,470,"rail"); txt(sch,80,492,"GND","nlabel");
+
+/* transistor symbols */
+function mosfet(cx,yT,yB,type,id){
+  var g=el("g",{class:"dev","data-dev":id});sch.appendChild(g);
+  var yM=(yT+yB)/2, st=16;
+  g.appendChild(el("rect",{class:"selring",x:cx-48,y:yT-6,width:64,height:(yB-yT)+12,rx:6}));
+  line(g,cx,yT,cx,yT+st,"wire");
+  line(g,cx,yB-st,cx,yB,"wire");
+  line(g,cx,yT+st,cx,yM-3,"chan");
+  line(g,cx,yM+3,cx,yB-st,"chan");
+  line(g,cx-11,yT+st,cx-11,yB-st,"gate");
+  line(g,cx-11,yM,cx-40,yM,"wire");
+  if(type==="p") g.appendChild(el("circle",{class:"bub",cx:cx-16,cy:yM,r:3.5}));
+  var hit=el("rect",{class:"dev-hit",x:cx-46,y:yT-8,width:60,height:(yB-yT)+16});
+  g.appendChild(hit);
+  return g;
+}
+var M3=mosfet(200,60,170,"p","M3");
+var M4=mosfet(440,60,170,"p","M4");
+var M1=mosfet(200,250,330,"n","M1");
+var M2=mosfet(440,250,330,"n","M2");
+var M5=mosfet(320,380,470,"n","M5");
+
+/* wiring */
+[ [200,170,320,170],[320,170,320,115],[320,115,400,115],   /* mirror gate line */
+  [160,115,160,170],[160,170,200,170],                      /* M3 diode loop */
+  [200,170,200,250],[440,170,440,250],                      /* drains */
+  [200,330,440,330],[320,330,320,380],                      /* source node + tail */
+  [160,290,120,290],[400,290,360,290],                      /* input leads ext */
+  [280,425,240,425]                                          /* vbias lead ext */
+].forEach(function(w){line(sch,w[0],w[1],w[2],w[3],"wire");});
+/* junction dots */
+[[200,170],[320,170],[440,170],[320,330]].forEach(function(p){
+  sch.appendChild(el("circle",{cx:p[0],cy:p[1],r:2.6,fill:"var(--dim)"}));});
+
+txt(sch,110,294,"IN+","nlabel");
+txt(sch,352,294,"IN−","nlabel");
+txt(sch,236,429,"Vbias","nlabel");
+txt(sch,450,162,"OUT","nlabel");
+txt(sch,212,192,"node A","nlabel");
+txt(sch,328,322,"S","nlabel");
+
+/* current overlay */
+function curr(x1,y1,x2,y2,id){
+  var l=el("line",{x1:x1,y1:y1,x2:x2,y2:y2,class:"cur","marker-end":"url(#ah)",id:id});
+  sch.appendChild(l);return l;
+}
+var cM3=curr(200,66,200,164), cM1=curr(200,176,200,324),
+    cM4=curr(440,66,440,164), cM2=curr(440,176,440,324),
+    cT =curr(320,336,320,464), cO =curr(446,170,634,170);
+var tI3=txt(sch,212,110,"","curlabel"), tI1=txt(sch,212,255,"","curlabel"),
+    tI4=txt(sch,452,110,"","curlabel"), tI2=txt(sch,452,255,"","curlabel"),
+    tIt=txt(sch,330,410,"","curlabel"), tO=txt(sch,500,158,"","curlabel");
+function setI(ln,tx,I,name){
+  var w=1.2+5.5*Math.abs(I)/It;
+  ln.setAttribute("stroke-width",w.toFixed(2));
+  ln.setAttribute("opacity",I<1e-9?0.15:0.9);
+  tx.textContent=name+" "+(I*1e6).toFixed(2)+" µA";
+}
+
+/* device roles */
+var ROLES={
+  M5:{n:"M5 — tail current source",
+      b:"Fixes the total current the pair can share (13 µA here). Because the tail is a current source, whatever M1 draws extra, M2 must give up — that constraint is what makes the pair a <i>steerer</i> rather than two independent amplifiers. Its W/L (with Vbias) sets I<sub>D</sub> → g<sub>m</sub> → GBW and power."},
+  M1:{n:"M1 — input pair (IN+)",
+      b:"Converts input voltage into current: g<sub>m</sub> amperes per volt. Its W/L sets g<sub>m</sub> = 2I<sub>D</sub>/V<sub>ov</sub>, and g<sub>m</sub> sets both the gain and the GBW. Sizing it is where the spec chain lands."},
+  M2:{n:"M2 — input pair (IN−)",
+      b:"Same job as M1, mirrored. Crucially, <b>its drain is the output node</b>: it is the pull-down half of the gain stage. Its W/L sets g<sub>m</sub> and r<sub>o2</sub>."},
+  M3:{n:"M3 — diode-connected mirror input",
+      b:"Gate tied to its own drain, so it carries exactly the branch current I₁ and impresses that V<sub>GS</sub> onto M4's gate. It is the 'definition' half of the mirror: identical W/L to M4 → identical copy. Its W/L sets the copy ratio."},
+  M4:{n:"M4 — mirror output",
+      b:"Pushes a copy of I₁ into the OUT node. The OUT node's only connections are two transistor drains in saturation — near-perfect current sources, so the imbalance (push − pull) has nowhere to go except into R<sub>out</sub> = r<sub>o2</sub>∥r<sub>o4</sub> ≈ 1.54 MΩ. Small current imbalance × huge resistance = large voltage. That is the gain."}
+};
+var sel=null;
+Object.keys(ROLES).forEach(function(id){
+  var g=sch.querySelector('[data-dev="'+id+'"]');
+  g.addEventListener("click",function(){
+    if(sel)sel.classList.remove("sel");
+    sel=g;g.classList.add("sel");
+    document.getElementById("roleName").textContent=ROLES[id].n;
+    document.getElementById("roleBody").innerHTML=ROLES[id].b;
+  });
+});
+
+/* ---------- live view ---------- */
+var vtc=document.getElementById("vtc"), ctx=vtc.getContext("2d");
+function update(){
+  var dV=parseFloat(document.getElementById("dv").value)*1e-3;
+  var d=steer(dV), I1=(It+d)/2, I2=(It-d)/2;
+  var vout=VQ+d*Rout, clipped=vout<VLO||vout>VHI;
+  vout=Math.max(VLO,Math.min(VHI,vout));
+  document.getElementById("dvLabel").innerHTML="ΔV<sub>in</sub> = "+(dV*1e3).toFixed(1)+" mV";
+  setI(cM3,tI3,I1,"I₁"); setI(cM1,tI1,I1,"I₁");
+  setI(cM4,tI4,I1,"I₁′"); setI(cM2,tI2,I2,"I₂");
+  setI(cT,tIt,It,"I_tail"); setI(cO,tO,d,"net");
+  document.getElementById("rI1").textContent=(I1*1e6).toFixed(2)+" µA";
+  document.getElementById("rI2").textContent=(I2*1e6).toFixed(2)+" µA";
+  document.getElementById("rI4").textContent=(I1*1e6).toFixed(2)+" µA";
+  document.getElementById("rI2b").textContent=(I2*1e6).toFixed(2)+" µA";
+  document.getElementById("rInet").textContent=(d*1e6).toFixed(2)+" µA";
+  document.getElementById("rVout").textContent=vout.toFixed(3)+" V";
+  var st=clipped?"output at rail":(Math.abs(dV)<=6.5e-3?"linear":"steering (nonlinear)");
+  var b=document.getElementById("rStat");b.textContent=st;
+  b.className="mono"+(clipped?" hot":"");
+  drawVTC(dV,vout);
+}
+function drawVTC(dV,vout){
+  var W=vtc.width,H=vtc.height,ml=44,mb=24,mt=10,mr=10;
+  ctx.clearRect(0,0,W,H);
+  var x0=-60e-3,x1=60e-3,y0=0.2,y1=1.7;
+  function X(v){return ml+(v-x0)/(x1-x0)*(W-ml-mr);}
+  function Y(v){return H-mb-(v-y0)/(y1-y0)*(H-mb-mt);}
+  /* linear band */
+  ctx.fillStyle="rgba(212,175,55,0.08)";
+  ctx.fillRect(X(-6.5e-3),mt,X(6.5e-3)-X(-6.5e-3),H-mb-mt);
+  /* rails */
+  ctx.strokeStyle="rgba(128,128,136,0.5)";ctx.setLineDash([4,3]);
+  [VLO,VHI].forEach(function(v){ctx.beginPath();ctx.moveTo(ml,Y(v));ctx.lineTo(W-mr,Y(v));ctx.stroke();});
+  ctx.setLineDash([]);
+  /* curve */
+  ctx.strokeStyle="var(--gold)";ctx.strokeStyle="#D4AF37";ctx.lineWidth=2;ctx.beginPath();
+  var first=true;
+  for(var v=x0;v<=x1+1e-9;v+=0.25e-3){
+    var d=steer(v),vo=Math.max(VLO,Math.min(VHI,VQ+d*Rout));
+    if(first){ctx.moveTo(X(v),Y(vo));first=false;}else ctx.lineTo(X(v),Y(vo));
+  }
+  ctx.stroke();ctx.lineWidth=1;
+  /* dot */
+  ctx.fillStyle="#D4AF37";ctx.beginPath();ctx.arc(X(dV),Y(vout),4,0,7);ctx.fill();
+  /* axes labels */
+  ctx.fillStyle="#8a8a92";ctx.font="10px ui-monospace,monospace";
+  ctx.fillText("−60",ml-4,H-mb+12);ctx.fillText("+60",W-mr-18,H-mb+12);
+  ctx.fillText("ΔV_in (mV)",ml+70,H-mb+12);
+  ctx.save();ctx.translate(10,60);ctx.rotate(-Math.PI/2);ctx.fillText("V_out",0,0);ctx.restore();
+  ctx.fillText("1.6",ml-24,Y(VHI)+3);ctx.fillText("0.3",ml-24,Y(VLO)+3);ctx.fillText("0.95",ml-30,Y(VQ)+3);
+}
+document.getElementById("dv").addEventListener("input",update);
+update();
+})();
+</script>
+</body>
+</html>
