@@ -74,6 +74,44 @@ Then:
 .\start_vnc.bat
 ```
 
+## 18 Oct
+Created under stage0/inverter, launched Xschem:
+```
+xschem &
+```
+![Xschem First Opening](../visuals/Xschem%20First%20Open.png)
 
+Before that, created ```5T OTA Design\.designinit```
+```
+export PDK=sky130A
+```
+To use the sky130A PDK instead as intended
 
+Then in the container's terminal:
+```
+cd /foss/designs/stage0/inverter
+xschem inverter.sch &
+```
+To create and save a schematic instead of the welcome page seen above
+
+**Confused**:
+### Why used Sky130A?
+As to what PDK is referring to, and why sky130A PDK is used? 
+PDK: Process Design Kit
+PDK bundles everything needed to design for that recipe
+Used for different recipe, devices:
+
+| | sky130 | GF180MCU | IHP SG13G2 |
+|---|---|---|---|
+| Who | SkyWater (US) | GlobalFoundries | IHP (Germany) |
+| Node | 130 nm CMOS | 180 nm CMOS | 130 nm **BiCMOS** |
+| Speciality | plain CMOS, open tapeout | plain CMOS, high voltage | SiGe HBTs, RF/mm-wave |
+| Models | MOS only | MOS only | MOS **+ RF transistors** |
+
+They differ in:  available device types, Vth values, oxide thickness (→ µCox), how many metal layers, what the models are accurate for
+
+Found out that sky130 was chosen:
+1. Tapeout: PDK that Tiny Tapeout uses, the mature route for open source route
+2. It has documentation, tutorials, worked examples, more community asnwers.
+3. It is available in the IIC OSIC TOOLS repo
 
