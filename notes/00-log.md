@@ -115,3 +115,49 @@ Found out that sky130 was chosen:
 2. It has documentation, tutorials, worked examples, more community asnwers.
 3. It is available in the IIC OSIC TOOLS repo
 
+**3. Xschem survival keys**:
+
+| Key | Action |
+|---|---|
+| `Insert` | place a symbol — opens the library browser; find `sky130_fd_pr` → `nfet_01v8` / `pfet_01v8` |
+| `w` | draw a wire (click start, click end, Esc to stop) |
+| `m` | move selected thing |
+| `c` | copy selected thing |
+| `q` | edit properties of the selected symbol (this is where you set W/L later) |
+| `Esc` | deselect / cancel current action |
+
+### Xschem, insert symbol
+Went to sky130_fd_pr library -> nfet_01v8 and pfet_01v8
+
+sky130_fd_pr PDK symbols, are direct to the SPICE models in PDK. 
+Netlist gets the real device model. 
+So the transistors follow the real models of sky130
+The vsource, gnd, vdd, lab_pin, lab_wire are devices, not real models.
+
+- nfet_01v8 / pfet_01v8 : Normal NMOS/PMOS, 1.8V core device.
+In stage 3, spec is 1.8V so 01v8 is chosen
+
+- _lvt / _hvt suffixes: low/high thresholds flavors of the same geometry
+- nfet_g5v0d10v5: thick-oxide IO device - 5V gate, 10.5V drain. For driving high voltages
+- nfet3_*: 3 terminal variant (No body pin exposed)
+
+**First exercise, meant to be inverter circuit practise to get use to the tools first**
+```
+VDD ──────┐
+          │
+        ──┤─  M2 (pfet, source up at VDD)
+VIN ────┤
+        ──┤─  M1 (nfet, source down at GND)
+          │
+GND ──────┘
+          │
+          └── VOUT   (drains tied together, this node = output)
+```
+Example schematic drawing of an inverter CMOS:
+
+![Schematic Drawing online](../visuals/Inverter%20Circuit%20Goal.png)
+
+My Xschem Schematic
+
+![My Xschem Schematic](../visuals/Xschem%20Inverter%20Circuit.png)
+
