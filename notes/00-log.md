@@ -161,3 +161,27 @@ My Xschem Schematic
 
 ![My Xschem Schematic](../visuals/Xschem%20Inverter%20Circuit.png)
 
+## 25 Oct
+
+- Had VDD placeholder with no value, added another `vsource` V2 with value = 1.8
+- Had the VIN that needed to be a variable voltage that can be then sweeped.
+- Need to have a DC sweep of the input VIN to have a transfer curve
+
+- Left V1 and V2 = 1.8
+- Added code_shown.sym in the schematic
+- Added the contents to : .dc V1 0 1.8 0.01
+- value = ".dc V1 0 1.8 0.01"
+- Can sweep the input VIN voltage
+
+- Encountered issue with net symbols. Since the normal pfet, nfet has 4 connections, including the bulk
+- Changed to 3 terminal nfet and pfet : pfet3, nfet3, auto connect teh bulk terminal
+
+- Added a lab_pinn with label VOUT to measure the node in the waveform viewer
+- Now netlist works, no error
+
+![Inverter Netlist and Simulation](../visuals/Xschem%20Inverter%20Netlist%20and%20Simulation.png)
+
+- Done with the simulation in the shell, `plot v(vout)`
+- Gave the waveform:
+
+![Inverter Simulation Plot](../visuals/Xschem%20Inverter%20v(vout)%20simulation%20plot.png)

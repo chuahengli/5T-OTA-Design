@@ -14,7 +14,7 @@ industry, with the open PDK equivalent of the commercial flow.
 
 | Stage | Deliverable | Status |
 |---|---|---|
-| 0 — Environment | Docker toolchain + CMOS inverter VTC | 🔄 in progress |
+| 0 — Environment | Docker toolchain + CMOS inverter VTC | ✅ complete |
 | 1 — Device characterization | sky130 NMOS/PMOS curve families, extracted V<sub>th</sub>/λ, gm/ID lookup | ⬜ not started |
 | 2 — Current mirror | 1:4 NMOS mirror, corner-verified copy accuracy | ⬜ not started |
 | 3 — **The 5T OTA to spec** | schematic, bode plots per corner, sizing rationale, iteration log | ⬜ not started |
